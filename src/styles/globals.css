@@ -529,6 +529,42 @@ body {
   font-size: 0.9rem;
 }
 
+/* Confirmation Dialog */
+.confirm-dialog {
+  max-width: 450px;
+}
+
+.confirm-message {
+  padding: 1.5rem;
+  color: var(--gray-700);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.confirm-message p {
+  margin: 0;
+}
+
+.btn-danger {
+  padding: 0.75rem 1.5rem;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 1rem;

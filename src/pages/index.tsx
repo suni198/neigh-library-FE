@@ -6,6 +6,14 @@ import { Member, Book, BorrowingWithDetails, MemberCreate, BookCreate } from '@/
 
 type ModalType = 'member' | 'book' | 'borrow' | null;
 
+interface ConfirmationDialog {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'books' | 'members' | 'borrowings'>('books');
@@ -19,6 +27,15 @@ export default function Home() {
   // Modal state
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmationDialog>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
   
   // Form state for Member
   const [memberForm, setMemberForm] = useState<MemberCreate>({
@@ -81,6 +98,36 @@ export default function Home() {
     }
   };
 
+  const loadAllData = async () => {
+    try {
+      const [membersRes, booksRes, borrowingsRes] = await Promise.all([
+        membersAPI.getAll(),
+        booksAPI.getAll(),
+        borrowingsAPI.getAll(),
+      ]);
+      setMembers(membersRes.data);
+      setBooks(booksRes.data);
+      setBorrowings(borrowingsRes.data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load data');
+    }
+  };
+
+  const showConfirmDialog = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        onConfirm();
+      },
+      onCancel: () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+      },
+    });
+  };
+
   // Member CRUD
   const openMemberModal = (member?: Member) => {
     if (member) {
@@ -121,13 +168,21 @@ export default function Home() {
   };
 
   const handleDeleteMember = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this member?')) return;
-    try {
-      await membersAPI.delete(id);
-      loadData();
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to delete member');
-    }
+    const member = members.find(m => m.id === id);
+    const memberName = member ? `${member.first_name} ${member.last_name}` : 'this member';
+    
+    showConfirmDialog(
+      'Delete Member',
+      `Are you sure you want to delete ${memberName}? This action cannot be undone.`,
+      async () => {
+        try {
+          await membersAPI.delete(id);
+          loadData();
+        } catch (err: any) {
+          alert(err.response?.data?.detail || 'Failed to delete member');
+        }
+      }
+    );
   };
 
   // Book CRUD
@@ -172,26 +227,39 @@ export default function Home() {
   };
 
   const handleDeleteBook = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this book?')) return;
-    try {
-      await booksAPI.delete(id);
-      loadData();
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to delete book');
-    }
+    const book = books.find(b => b.id === id);
+    const bookTitle = book ? book.title : 'this book';
+    
+    showConfirmDialog(
+      'Delete Book',
+      `Are you sure you want to delete "${bookTitle}"? This action cannot be undone.`,
+      async () => {
+        try {
+          await booksAPI.delete(id);
+          loadData();
+        } catch (err: any) {
+          alert(err.response?.data?.detail || 'Failed to delete book');
+        }
+      }
+    );
   };
 
   // Borrowing operations
-  const openBorrowModal = (bookId?: number) => {
+  const openBorrowModal = async (bookId?: number) => {
+    await loadAllData();
     setBorrowForm({
-      member_id: members.length > 0 ? members[0].id : 0,
-      book_id: bookId || (books.length > 0 ? books[0].id : 0),
+      member_id: 0,
+      book_id: bookId || 0,
     });
     setModalType('borrow');
   };
 
   const handleBorrow = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!borrowForm.member_id || !borrowForm.book_id) {
+      alert('Please select both a member and a book');
+      return;
+    }
     try {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 14);
@@ -201,20 +269,28 @@ export default function Home() {
         due_date: dueDate.toISOString(),
       });
       setModalType(null);
-      loadData();
+      await loadAllData();
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Failed to borrow book');
     }
   };
 
   const handleReturn = async (borrowingId: number) => {
-    if (!confirm('Mark this book as returned?')) return;
-    try {
-      await borrowingsAPI.return(borrowingId, {});
-      loadData();
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to return book');
-    }
+    const borrowing = borrowings.find(b => b.id === borrowingId);
+    const bookTitle = borrowing ? borrowing.book.title : 'this book';
+    
+    showConfirmDialog(
+      'Return Book',
+      `Mark "${bookTitle}" as returned?`,
+      async () => {
+        try {
+          await borrowingsAPI.return(borrowingId, {});
+          await loadAllData();
+        } catch (err: any) {
+          alert(err.response?.data?.detail || 'Failed to return book');
+        }
+      }
+    );
   };
 
   return (
@@ -569,7 +645,7 @@ export default function Home() {
                     value={borrowForm.member_id}
                     onChange={(e) => setBorrowForm({...borrowForm, member_id: parseInt(e.target.value)})}
                   >
-                    <option value="">Choose a member...</option>
+                    <option value="0">Choose a member...</option>
                     {members.filter(m => m.is_active).map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.first_name} {member.last_name} ({member.email})
@@ -584,7 +660,7 @@ export default function Home() {
                     value={borrowForm.book_id}
                     onChange={(e) => setBorrowForm({...borrowForm, book_id: parseInt(e.target.value)})}
                   >
-                    <option value="">Choose a book...</option>
+                    <option value="0">Choose a book...</option>
                     {books.filter(b => b.available_copies > 0).map((book) => (
                       <option key={book.id} value={book.id}>
                         {book.title} by {book.author} ({book.available_copies} available)
@@ -602,6 +678,28 @@ export default function Home() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Dialog */}
+        {confirmDialog.isOpen && (
+          <div className="modal-overlay" onClick={confirmDialog.onCancel}>
+            <div className="modal confirm-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{confirmDialog.title}</h2>
+              </div>
+              <div className="confirm-message">
+                <p>{confirmDialog.message}</p>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={confirmDialog.onCancel}>
+                  Cancel
+                </button>
+                <button type="button" className="btn-danger" onClick={confirmDialog.onConfirm}>
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
         )}
