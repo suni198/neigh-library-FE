@@ -210,9 +210,6 @@ npm run dev
 
 Full documentation available in the main project directory:
 - `README.md` - Main project overview
-- `CRUD_IMPLEMENTATION.md` - CRUD features guide
-- `TESTING_GUIDE.md` - Testing documentation
-- `COMPLETE_IMPLEMENTATION.md` - Full implementation summary
 
 ## Support
 
