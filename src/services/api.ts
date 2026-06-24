@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Member, MemberCreate, Book, BookCreate, Borrowing, BorrowingWithDetails, BorrowingCreate, BorrowingReturn } from '@/types';
+import { Member, MemberCreate, MemberUpdate, Book, BookCreate, Borrowing, BorrowingWithDetails, BorrowingCreate, BorrowingReturn } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -37,7 +37,7 @@ export const membersAPI = {
   getAll: () => api.get<Member[]>('/members'),
   getById: (id: number) => api.get<Member>(`/members/${id}`),
   create: (data: MemberCreate) => api.post<Member>('/members', data),
-  update: (id: number, data: Partial<MemberCreate>) => api.put<Member>(`/members/${id}`, data),
+  update: (id: number, data: MemberUpdate) => api.put<Member>(`/members/${id}`, data),
   delete: (id: number) => api.delete(`/members/${id}`),
 };
 

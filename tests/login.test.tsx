@@ -27,7 +27,8 @@ describe('Login Page', () => {
   it('should render login form', () => {
     render(<Login />);
     
-    expect(screen.getByText('Login')).toBeInTheDocument();
+    // Use heading role to distinguish from the submit button which also has text 'Login'
+    expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Username')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();

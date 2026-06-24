@@ -108,19 +108,19 @@ describe('Home Page', () => {
     });
   });
 
+  // Helper: navigate to Members tab and wait for members to load
+  const goToMembersTab = async () => {
+    await waitFor(() => expect(booksAPI.getAll).toHaveBeenCalled());
+    const membersTab = screen.getByText('Members');
+    fireEvent.click(membersTab);
+    await waitFor(() => expect(membersAPI.getAll).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText('John Doe')).toBeInTheDocument());
+  };
+
   describe('Custom Confirmation Modal', () => {
     it('should show custom confirmation modal on delete member', async () => {
       render(<Home />);
-      
-      // Wait for data to load and switch to Members tab
-      await waitFor(() => expect(membersAPI.getAll).toHaveBeenCalled());
-      
-      const membersTab = screen.getByText('Members');
-      fireEvent.click(membersTab);
-      
-      await waitFor(() => {
-        expect(screen.getByText('John Doe')).toBeInTheDocument();
-      });
+      await goToMembersTab();
       
       // Find and click delete button
       const deleteButtons = screen.getAllByTitle('Delete');
@@ -135,35 +135,20 @@ describe('Home Page', () => {
 
     it('should show member name in confirmation message', async () => {
       render(<Home />);
-      
-      await waitFor(() => expect(membersAPI.getAll).toHaveBeenCalled());
-      
-      const membersTab = screen.getByText('Members');
-      fireEvent.click(membersTab);
-      
-      await waitFor(() => {
-        expect(screen.getByText('John Doe')).toBeInTheDocument();
-      });
+      await goToMembersTab();
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
       
       await waitFor(() => {
-        expect(screen.getByText(/John Doe/i)).toBeInTheDocument();
+        // The confirmation <p> contains the full sentence; match it specifically
+        expect(screen.getByText(/Are you sure you want to delete John Doe/i)).toBeInTheDocument();
       });
     });
 
     it('should close modal on cancel', async () => {
       render(<Home />);
-      
-      await waitFor(() => expect(membersAPI.getAll).toHaveBeenCalled());
-      
-      const membersTab = screen.getByText('Members');
-      fireEvent.click(membersTab);
-      
-      await waitFor(() => {
-        expect(screen.getByText('John Doe')).toBeInTheDocument();
-      });
+      await goToMembersTab();
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
@@ -184,15 +169,7 @@ describe('Home Page', () => {
       (membersAPI.delete as jest.Mock).mockResolvedValue({ status: 204 });
       
       render(<Home />);
-      
-      await waitFor(() => expect(membersAPI.getAll).toHaveBeenCalled());
-      
-      const membersTab = screen.getByText('Members');
-      fireEvent.click(membersTab);
-      
-      await waitFor(() => {
-        expect(screen.getByText('John Doe')).toBeInTheDocument();
-      });
+      await goToMembersTab();
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
@@ -225,15 +202,7 @@ describe('Home Page', () => {
       const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
       
       render(<Home />);
-      
-      await waitFor(() => expect(membersAPI.getAll).toHaveBeenCalled());
-      
-      const membersTab = screen.getByText('Members');
-      fireEvent.click(membersTab);
-      
-      await waitFor(() => {
-        expect(screen.getByText('John Doe')).toBeInTheDocument();
-      });
+      await goToMembersTab();
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
@@ -301,8 +270,8 @@ describe('Home Page', () => {
       
       await waitFor(() => expect(booksAPI.getAll).toHaveBeenCalled());
       
-      // Click "Borrow Book" button
-      const borrowButton = screen.getByText(/Borrow Book/i);
+      // Click "Borrow Book" action bar button (emoji-prefixed to distinguish from modal submit)
+      const borrowButton = screen.getByText(/📖 Borrow Book/i);
       fireEvent.click(borrowButton);
       
       // Should call all APIs to load fresh data
@@ -318,7 +287,7 @@ describe('Home Page', () => {
       
       await waitFor(() => expect(booksAPI.getAll).toHaveBeenCalled());
       
-      const borrowButton = screen.getByText(/Borrow Book/i);
+      const borrowButton = screen.getByText(/📖 Borrow Book/i);
       fireEvent.click(borrowButton);
       
       await waitFor(() => {
@@ -333,12 +302,14 @@ describe('Home Page', () => {
       
       await waitFor(() => expect(booksAPI.getAll).toHaveBeenCalled());
       
-      const borrowButton = screen.getByText(/Borrow Book/i);
+      // Use the secondary action-bar button (has emoji prefix)
+      const borrowButton = screen.getByText(/📖 Borrow Book/i);
       fireEvent.click(borrowButton);
       
       await waitFor(() => {
         expect(screen.getByText(/Select Book/i)).toBeInTheDocument();
-        expect(screen.getByText(/Test Book 1/i)).toBeInTheDocument();
+        // Check the option in the select dropdown, not the book card
+        expect(screen.getByRole('option', { name: /Test Book 1.*available/i })).toBeInTheDocument();
       });
     });
 
@@ -347,7 +318,7 @@ describe('Home Page', () => {
       
       await waitFor(() => expect(booksAPI.getAll).toHaveBeenCalled());
       
-      const borrowButton = screen.getByText(/Borrow Book/i);
+      const borrowButton = screen.getByText(/📖 Borrow Book/i);
       fireEvent.click(borrowButton);
       
       await waitFor(() => {
@@ -384,20 +355,28 @@ describe('Home Page', () => {
       
       await waitFor(() => expect(booksAPI.getAll).toHaveBeenCalled());
       
-      const borrowButton = screen.getByText(/Borrow Book/i);
+      const borrowButton = screen.getByText(/📖 Borrow Book/i);
       fireEvent.click(borrowButton);
       
       await waitFor(() => {
-        expect(screen.getByText(/Borrow Book/i)).toBeInTheDocument();
+        expect(screen.getByText(/Select Member/i)).toBeInTheDocument();
       });
       
-      // Select member and book, then submit
-      const submitButton = screen.getByRole('button', { name: /Borrow Book/i });
+      // Submit the form (member_id/book_id are 0 so the alert fires, but we test the API call path)
+      // Pre-set valid selections to get past validation
+      // Labels aren't linked via htmlFor so query by order (member=0, book=1)
+      const selects = screen.getAllByRole('combobox');
+      fireEvent.change(selects[0], { target: { value: '1' } }); // member
+      fireEvent.change(selects[1], { target: { value: '1' } }); // book
       
       // Clear previous calls
       jest.clearAllMocks();
+      (membersAPI.getAll as jest.Mock).mockResolvedValue({ data: mockMembers });
+      (booksAPI.getAll as jest.Mock).mockResolvedValue({ data: mockBooks });
+      (borrowingsAPI.getAll as jest.Mock).mockResolvedValue({ data: mockBorrowings });
       
-      fireEvent.click(submitButton);
+      const form = document.querySelector('form.modal-form') as HTMLFormElement;
+      fireEvent.submit(form);
       
       // Should refresh all data after successful borrow
       await waitFor(() => {
@@ -457,16 +436,18 @@ describe('Home Page', () => {
       
       await waitFor(() => expect(booksAPI.getAll).toHaveBeenCalled());
       
-      const borrowButton = screen.getByText(/Borrow Book/i);
+      // Open the borrow modal via the emoji-prefixed action bar button
+      const borrowButton = screen.getByText(/📖 Borrow Book/i);
       fireEvent.click(borrowButton);
       
+      // Wait for the modal to open (modal has a form with a distinct submit button)
       await waitFor(() => {
-        expect(screen.getByText(/Borrow Book/i)).toBeInTheDocument();
+        expect(screen.getByText(/Select Member/i)).toBeInTheDocument();
       });
       
-      // Try to submit without selecting
-      const submitButton = screen.getByRole('button', { name: /Borrow Book/i });
-      fireEvent.click(submitButton);
+      // Submit the form directly without selecting member/book
+      const form = document.querySelector('form.modal-form') as HTMLFormElement;
+      fireEvent.submit(form);
       
       await waitFor(() => {
         expect(alertMock).toHaveBeenCalledWith(

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { membersAPI, booksAPI, borrowingsAPI } from '@/services/api';
-import { Member, Book, BorrowingWithDetails, MemberCreate, BookCreate } from '@/types';
+import { Member, Book, BorrowingWithDetails, MemberCreate, MemberUpdate, BookCreate } from '@/types';
 
 type ModalType = 'member' | 'book' | 'borrow' | null;
 
@@ -45,6 +45,7 @@ export default function Home() {
     phone: '',
     address: '',
   });
+  const [memberIsActive, setMemberIsActive] = useState<boolean>(true);
   
   // Form state for Book
   const [bookForm, setBookForm] = useState<BookCreate>({
@@ -139,6 +140,7 @@ export default function Home() {
         phone: member.phone || '',
         address: member.address || '',
       });
+      setMemberIsActive(member.is_active);
     } else {
       setEditingId(null);
       setMemberForm({
@@ -148,6 +150,7 @@ export default function Home() {
         phone: '',
         address: '',
       });
+      setMemberIsActive(true);
     }
     setModalType('member');
   };
@@ -156,7 +159,8 @@ export default function Home() {
     e.preventDefault();
     try {
       if (editingId) {
-        await membersAPI.update(editingId, memberForm);
+        const updateData: MemberUpdate = { ...memberForm, is_active: memberIsActive };
+        await membersAPI.update(editingId, updateData);
       } else {
         await membersAPI.create(memberForm);
       }
@@ -411,16 +415,14 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {members.map((member) => (
+                  {members.filter(m => m.is_active).map((member) => (
                     <tr key={member.id}>
                       <td>{member.first_name} {member.last_name}</td>
                       <td>{member.email}</td>
                       <td>{member.phone || '-'}</td>
                       <td>{new Date(member.membership_date).toLocaleDateString()}</td>
                       <td>
-                        <span className={member.is_active ? 'badge active' : 'badge inactive'}>
-                          {member.is_active ? 'Active' : 'Inactive'}
-                        </span>
+                        <span className="badge active">Active</span>
                       </td>
                       <td>
                         <div className="btn-group">
@@ -536,6 +538,17 @@ export default function Home() {
                     onChange={(e) => setMemberForm({...memberForm, address: e.target.value})}
                   />
                 </div>
+                {editingId && (
+                  <div className="form-group form-group-inline">
+                    <label htmlFor="member-is-active">Active Member</label>
+                    <input
+                      id="member-is-active"
+                      type="checkbox"
+                      checked={memberIsActive}
+                      onChange={(e) => setMemberIsActive(e.target.checked)}
+                    />
+                  </div>
+                )}
                 <div className="modal-actions">
                   <button type="button" className="btn-secondary" onClick={() => setModalType(null)}>
                     Cancel

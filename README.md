@@ -150,7 +150,7 @@ The frontend calls the backend at `NEXT_PUBLIC_API_URL` (default `http://localho
 
 | Variable | Default | Description |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Backend API base URL |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8001` | Backend API base URL |
 
 ---
 

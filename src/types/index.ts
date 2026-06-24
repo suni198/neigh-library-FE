@@ -47,6 +47,15 @@ export interface MemberCreate {
   address?: string;
 }
 
+export interface MemberUpdate {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  is_active?: boolean;
+}
+
 export interface Book {
   id: number;
   isbn?: string;
