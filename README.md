@@ -1,219 +1,176 @@
-# Neighborhood Library App - Frontend
+# Neighborhood Library App — Frontend
 
-This is the frontend application for the Neighborhood Library Management System, built with Next.js and React.
-
-## Location
-
-This frontend code is located at:
-```
-/Users/sunitasahu/Documents/interview assignment/neigh-library-FE/frontend
-```
-
-The backend and docker-compose files are located at:
-```
-/Users/sunitasahu/Documents/interview assignment/senior arcitect role/
-```
-
-## Quick Start
-
-### Run with Docker Compose (Recommended)
-
-From the backend directory:
-```bash
-cd "/Users/sunitasahu/Documents/interview assignment/senior arcitect role"
-docker-compose up -d
-```
-
-The frontend will be available at: http://localhost:3001
-
-### Run Standalone (Development)
-
-```bash
-cd "/Users/sunitasahu/Documents/interview assignment/neigh-library-FE/frontend"
-
-# Install dependencies
-npm install
-
-# Set environment variable
-export NEXT_PUBLIC_API_URL=http://localhost:8001
-
-# Run development server
-npm run dev
-```
-
-## Features
-
-### Authentication
-- Login page with JWT token authentication
-- Automatic redirect to login if not authenticated
-- Token stored in localStorage
-- Auto-logout on token expiration
-
-### Full CRUD Operations
-
-#### Members
-- ✅ Create new members (modal form)
-- ✅ View all members (table view)
-- ✅ Edit members (✏️ icon)
-- ✅ Delete members (🗑️ icon)
-
-#### Books
-- ✅ Create new books (modal form)
-- ✅ View all books (card view)
-- ✅ Edit books (✏️ icon)
-- ✅ Delete books (🗑️ icon)
-- ✅ Borrow books (button on each card)
-
-#### Borrowings
-- ✅ Borrow books (with member and book selection)
-- ✅ View all borrowings
-- ✅ Return books
-- ✅ View borrowing history
+React/Next.js frontend for the Neighborhood Library Management System.
 
 ## Tech Stack
 
-- **Framework**: Next.js 14
-- **UI Library**: React 18
-- **Language**: TypeScript
-- **HTTP Client**: Axios
-- **Styling**: CSS Modules
-- **Testing**: Jest + React Testing Library
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 |
+| Language | TypeScript |
+| HTTP Client | Axios |
+| Styling | CSS Modules |
+| Testing | Jest + React Testing Library |
+| Container | Docker |
+
+---
+
+## Bug Fixes Implemented
+
+This assignment required identifying and fixing **4 bugs**. The frontend was responsible for Bugs 1, 3, and 4:
+
+### Bug 1 — No Confirmation Before Delete
+**Problem:** Clicking the delete icon instantly deleted a member or book with no confirmation.  
+**Fix:** Added a reusable `ConfirmationModal` component rendered before any delete API call. Shows the item name and action, requires explicit confirmation, and handles cancellation cleanly.
+
+```tsx
+// Before (no guard)
+await api.delete(`/members/${id}/`);
+
+// After (custom modal)
+setDeleteTarget({ id, name });
+setShowConfirmModal(true);
+// Modal calls handleConfirmDelete() on confirm
+```
+
+### Bug 3 — Borrow Modal Member List Was Empty
+**Problem:** The borrow modal showed an empty members dropdown because the API call used `.then()` but the result wasn't properly awaited before state was set.  
+**Fix:** Corrected the async/await pattern in the data-fetching function so the members list populates correctly when the modal opens.
+
+### Bug 4 — Data Not Refreshed After Operations
+**Problem:** After create / update / delete operations the table or card grid showed stale data — the user had to manually refresh the page.  
+**Fix:** Added an explicit `fetchData()` call inside every mutation handler's success path so the UI re-renders with fresh server data automatically.
+
+---
+
+## Quick Start
+
+### Option 1 — Docker Compose (Recommended)
+
+```bash
+# Clone all three repos into one directory
+git clone https://github.com/suni198/neigh-library-BE.git
+git clone https://github.com/suni198/neigh-library-FE.git
+git clone https://github.com/suni198/neigh-library-deployment.git
+
+cp neigh-library-deployment/docker-compose.yml .
+docker-compose up -d
+```
+
+Frontend: http://localhost:3001  
+Login: `admin` / `admin123`
+
+### Option 2 — Standalone Development
+
+```bash
+cd neigh-library-FE
+
+npm install
+
+export NEXT_PUBLIC_API_URL=http://localhost:8001
+
+npm run dev
+```
+
+---
 
 ## Project Structure
 
 ```
-frontend/
+neigh-library-FE/
 ├── src/
-│   ├── pages/           # Next.js pages (routes)
-│   │   ├── index.tsx    # Main app with tabs
-│   │   ├── login.tsx    # Login page
-│   │   ├── _app.tsx     # App wrapper
+│   ├── pages/
+│   │   ├── index.tsx        # Main app: Books, Members, Borrowings tabs
+│   │   ├── login.tsx        # JWT login page
+│   │   ├── _app.tsx         # App wrapper + global auth check
 │   │   └── _document.tsx
-│   ├── services/        # API client
-│   │   └── api.ts       # Axios configuration
-│   ├── types/           # TypeScript types
-│   │   └── index.ts
-│   └── styles/          # CSS styles
+│   ├── services/
+│   │   └── api.ts           # Axios instance + typed API methods
+│   ├── types/
+│   │   └── index.ts         # TypeScript interfaces (Book, Member, Borrowing)
+│   └── styles/
 │       └── globals.css
-├── tests/               # Unit tests
-│   ├── api.test.ts
-│   └── login.test.tsx
-├── jest.config.js       # Jest configuration
-├── jest.setup.js        # Test setup
+├── tests/
+│   ├── api.test.ts          # API service unit tests
+│   └── login.test.tsx       # Login component tests
+├── jest.config.js
+├── jest.setup.js
 ├── package.json
 ├── tsconfig.json
 └── Dockerfile
 ```
 
+---
+
+## Features
+
+### Authentication
+- JWT token login/logout
+- Token stored in `localStorage`
+- Auto-redirect to `/login` if unauthenticated
+- Axios interceptor attaches `Authorization: Bearer <token>` to every request
+
+### Members
+- List all members (table view)
+- Create / edit via modal form
+- Delete with confirmation modal (Bug 1 fix)
+- Blocked by API if member has active borrowings (Bug 2 — backend fix)
+
+### Books
+- List all books (card view)
+- Create / edit via modal form
+- Delete with confirmation modal (Bug 1 fix)
+- Borrow button opens borrow modal with correct member list (Bug 3 fix)
+- Available copies tracked and displayed
+
+### Borrowings
+- List all borrowings with status badges
+- Return a book (one-click with confirmation)
+- Filters by status (BORROWED / RETURNED)
+
+### Data Freshness
+All mutation operations (create, update, delete, borrow, return) trigger an automatic data refresh so the UI is always in sync (Bug 4 fix).
+
+---
+
 ## API Integration
 
-The frontend connects to the backend API at `http://localhost:8001` (configurable via `NEXT_PUBLIC_API_URL`).
+The frontend calls the backend at `NEXT_PUBLIC_API_URL` (default `http://localhost:8001`).
 
-### API Endpoints Used
+| Resource | Endpoints used |
+|---|---|
+| Auth | `POST /auth/login`, `GET /auth/me` |
+| Members | `GET/POST/PUT/DELETE /members/` |
+| Books | `GET/POST/PUT/DELETE /books/` |
+| Borrowings | `GET /borrowings/`, `POST /borrowings/`, `POST /borrowings/{id}/return/` |
 
-| Resource | Method | Endpoint | Purpose |
-|----------|--------|----------|---------|
-| Auth | POST | `/auth/login` | Login |
-| Auth | POST | `/auth/register` | Register |
-| Auth | GET | `/auth/me` | Get current user |
-| Members | GET | `/members/` | List members |
-| Members | POST | `/members/` | Create member |
-| Members | PUT | `/members/{id}/` | Update member |
-| Members | DELETE | `/members/{id}/` | Delete member |
-| Books | GET | `/books/` | List books |
-| Books | POST | `/books/` | Create book |
-| Books | PUT | `/books/{id}/` | Update book |
-| Books | DELETE | `/books/{id}/` | Delete book |
-| Borrowings | GET | `/borrowings/` | List borrowings |
-| Borrowings | POST | `/borrowings/` | Borrow book |
-| Borrowings | POST | `/borrowings/{id}/return/` | Return book |
+---
 
 ## Environment Variables
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Backend API URL |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Backend API base URL |
+
+---
 
 ## Testing
 
-### Run Tests
-
 ```bash
-# Run tests in watch mode
+# Run all tests
 npm test
 
-# Run tests once (CI mode)
+# CI mode (no watch)
 npm run test:ci
 
-# Run with coverage
+# With coverage
 npm run test:ci -- --coverage
 ```
 
-### Test Coverage
+Test files cover API service methods, authentication flow, login form validation, and error handling.
 
-- API service methods
-- Authentication flow
-- Login component
-- Form validation
-- Error handling
+---
 
-## Building for Production
+## Repository
 
-```bash
-# Build production bundle
-npm run build
-
-# Start production server
-npm start
-```
-
-## Default Credentials
-
-- **Username**: `admin`
-- **Password**: `admin123`
-
-## Features Demonstrated
-
-1. **Authentication**: JWT token-based auth with login/logout
-2. **CRUD Operations**: Complete create, read, update, delete for all resources
-3. **Modal Forms**: User-friendly data entry
-4. **Error Handling**: Display API errors to users
-5. **Loading States**: Show loading indicators
-6. **Responsive Design**: Works on mobile and desktop
-7. **TypeScript**: Full type safety
-8. **Modern UI**: Clean, professional interface
-
-## Troubleshooting
-
-### Port Already in Use
-If port 3001 is already in use, modify `docker-compose.yml`:
-```yaml
-frontend:
-  ports:
-    - "3002:3000"  # Change host port
-```
-
-### API Connection Issues
-1. Verify backend is running: `curl http://localhost:8001/health`
-2. Check CORS settings in backend
-3. Verify `NEXT_PUBLIC_API_URL` environment variable
-
-### Build Errors
-```bash
-# Clear cache and rebuild
-rm -rf .next node_modules
-npm install
-npm run dev
-```
-
-## Documentation
-
-Full documentation available in the main project directory:
-- `README.md` - Main project overview
-
-## Support
-
-For issues or questions about the frontend implementation, refer to the main project documentation at:
-```
-/Users/sunitasahu/Documents/interview assignment/senior arcitect role/
-```
+https://github.com/suni198/neigh-library-FE
